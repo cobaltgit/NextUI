@@ -2664,7 +2664,7 @@ static void Special_render(void) {
 	if (special.palette_updated) Special_refreshDMGPalette();
 }
 static void Special_quit(void) {
-	system("rm -f /tmp/dmg_grid_color");
+	unlink("/tmp/dmg_grid_color");
 }
 ///////////////////////////////
 
