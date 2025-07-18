@@ -764,7 +764,7 @@ void PLAT_quitVideo(void) {
 	SDL_DestroyWindow(vid.window);
 
 	SDL_Quit();
-	system("cat /dev/zero > /dev/fb0 2>/dev/null");
+	PLAT_clearFrameBuffer();
 }
 
 void PLAT_clearVideo(SDL_Surface* screen) {
@@ -2303,7 +2303,8 @@ void PLAT_powerOff(int reboot) {
 	if (CFG_getHaptics()) {
 		VIB_singlePulse(VIB_bootStrength, VIB_bootDuration_ms);
 	}
-	system("rm -f /tmp/nextui_exec && sync");
+	unlink("/tmp/nextui_exec");
+	sync();
 	sleep(2);
 
 	SetRawVolume(MUTE_VOLUME_RAW);
@@ -2313,7 +2314,7 @@ void PLAT_powerOff(int reboot) {
 	PWR_quit();
 	GFX_quit();
 
-	system("cat /dev/zero > /dev/fb0 2>/dev/null");
+	PLAT_clearFrameBuffer();
 	if(reboot > 0)
 		touch("/tmp/reboot");
 	else
@@ -2325,6 +2326,38 @@ void PLAT_powerOff(int reboot) {
 int PLAT_supportsDeepSleep(void) { return 1; }
 
 ///////////////////////////////
+
+int PLAT_clearFrameBuffer(void) {
+    int fb_fd = open("/dev/fb0", O_WRONLY);
+    if (fb_fd < 0) {
+        return -1;
+    }
+    
+    struct fb_var_screeninfo vinfo;
+    struct fb_fix_screeninfo finfo;
+    
+    if (ioctl(fb_fd, FBIOGET_VSCREENINFO, &vinfo) == 0 && 
+        ioctl(fb_fd, FBIOGET_FSCREENINFO, &finfo) == 0) {
+        
+        size_t fb_size = vinfo.xres * vinfo.yres * (vinfo.bits_per_pixel / 8);
+        
+        void *fb_mem = mmap(NULL, fb_size, PROT_WRITE, MAP_SHARED, fb_fd, 0);
+        if (fb_mem != MAP_FAILED) {
+            memset(fb_mem, 0, fb_size);
+            munmap(fb_mem, fb_size);
+            close(fb_fd);
+            return 0;
+        }
+    }
+    char zero_buffer[65536];
+    memset(zero_buffer, 0, sizeof(zero_buffer));
+    
+    while (write(fb_fd, zero_buffer, sizeof(zero_buffer)) > 0) {}
+    
+    close(fb_fd);
+    return 0;
+}
+
 
 double get_time_sec() {
     struct timespec ts;
