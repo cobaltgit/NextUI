@@ -227,10 +227,10 @@ int main(int argc , char* argv[]) {
 			if (select_cursor >= option_count) select_cursor -= option_count;
 			
 			if (show_24hour) {
-				system("touch " USERDATA_PATH "/show_24hour");
+				touch(USERDATA_PATH "/show_24hour");
 			}
 			else {
-				system("rm " USERDATA_PATH "/show_24hour");
+				unlink(USERDATA_PATH "/show_24hour");
 			}
 		}
 		
